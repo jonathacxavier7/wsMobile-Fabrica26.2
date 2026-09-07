@@ -1,11 +1,23 @@
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
 
-import { COLORS, STATUS_COLORS, type SubjectStatus } from "@/constants/colors";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+
+import {
+  COLORS,
+  STATUS_COLORS,
+  type SubjectStatus,
+} from "@/constants/colors";
 
 export interface Subject {
   id: string;
-  title: string;
-  shortDescription: string;
+  name: string;
   description: string;
   coverUrl: string;
   status: SubjectStatus;
@@ -18,42 +30,70 @@ interface SubjectCardProps {
   onPress: (id: string) => void;
 }
 
-const STATUS_LABELS: Record<SubjectStatus, string> = {
-  active: "Ativa",
-  pending: "Pendente",
-  inactive: "Inativa",
-};
-
 export function SubjectCard({ subject, onPress }: SubjectCardProps) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+
+  useEffect(() => {
+    setImageError(false);
+    setImageLoading(true);
+  }, [subject.coverUrl]);
+
   return (
     <Pressable
       accessibilityRole="button"
       onPress={() => onPress(subject.id)}
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
     >
-      <Image
-        source={{ uri: subject.coverUrl }}
-        style={styles.cover}
-        resizeMode="cover"
-      />
+      <View style={styles.coverWrap}>
+        {imageError || !subject.coverUrl ? (
+          <Image
+            source={require("../assets/placeholder.png")}
+            style={styles.cover}
+            resizeMode="cover"
+          />
+        ) : (
+          <Image
+            source={{ uri: subject.coverUrl }}
+            onError={() => setImageError(true)}
+            onLoadEnd={() => setImageLoading(false)}
+            onLoadStart={() => setImageLoading(true)}
+            style={styles.cover}
+            resizeMode="cover"
+          />
+        )}
+
+        {imageLoading && !imageError && !!subject.coverUrl && (
+          <ActivityIndicator
+            color={COLORS.primary}
+            style={styles.imageLoader}
+          />
+        )}
+      </View>
 
       <View style={styles.content}>
         <View style={styles.header}>
           <Text numberOfLines={2} style={styles.title}>
-            {subject.title}
+            {subject.name}
           </Text>
+
           <View
             style={[
               styles.badge,
-              { backgroundColor: STATUS_COLORS[subject.status] },
+              {
+                backgroundColor:
+                  STATUS_COLORS[subject.status] ?? COLORS.primary,
+              },
             ]}
           >
-            <Text style={styles.badgeText}>{STATUS_LABELS[subject.status]}</Text>
+            <Text style={styles.badgeText}>
+              {subject.status.toUpperCase()}
+            </Text>
           </View>
         </View>
 
         <Text numberOfLines={2} style={styles.description}>
-          {subject.shortDescription}
+          {subject.description}
         </Text>
       </View>
     </Pressable>
@@ -69,40 +109,61 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     overflow: "hidden",
   },
+
   cardPressed: {
     opacity: 0.82,
   },
+
   cover: {
-    aspectRatio: 16 / 9,
-    backgroundColor: COLORS.border,
+    height: "100%",
     width: "100%",
   },
+
+  coverWrap: {
+    aspectRatio: 16 / 9,
+    backgroundColor: COLORS.border,
+    position: "relative",
+  },
+
+  imageLoader: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+
   content: {
     gap: 10,
     padding: 14,
   },
+
   header: {
     alignItems: "flex-start",
     flexDirection: "row",
     gap: 10,
     justifyContent: "space-between",
   },
+
   title: {
     color: COLORS.text,
     flex: 1,
     fontSize: 17,
     fontWeight: "700",
   },
+
   badge: {
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
+
   badgeText: {
     color: COLORS.white,
     fontSize: 12,
     fontWeight: "700",
   },
+
   description: {
     color: COLORS.textSecondary,
     fontSize: 14,
