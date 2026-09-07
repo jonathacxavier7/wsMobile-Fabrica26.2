@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -12,30 +13,74 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { api, setToken } from "@/constants/api";
 import { COLORS } from "@/constants/colors";
 
 export default function HomeScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleLoginPreview() {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Campos obrigatórios", "Informe e-mail e senha para entrar.");
+  async function handleLogin() {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPassword = password.trim();
+
+    if (!normalizedEmail || !normalizedPassword) {
+      Alert.alert(
+        "Campos obrigatórios",
+        "Informe e-mail e senha para entrar.",
+      );
       return;
     }
 
-    router.replace("/(tabs)/subjects");
+    const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+
+    if (!emailIsValid) {
+      Alert.alert(
+        "E-mail inválido",
+        "Informe um endereço de e-mail válido.",
+      );
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const { data } = await api.post<{ accessToken: string }>(
+        "/auth/login",
+        {
+          email: normalizedEmail,
+          password: normalizedPassword,
+        },
+      );
+
+      await setToken(data.accessToken);
+
+      router.replace("/(tabs)/subjects");
+    } catch (error: any) {
+      const message =
+        error.response?.status === 401
+          ? "E-mail ou senha incorretos."
+          : "Nao foi possivel entrar. Tente novamente.";
+
+      Alert.alert("Falha no login", message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.select({ ios: "padding", default: undefined })}
+        behavior={Platform.select({
+          ios: "padding",
+          default: undefined,
+        })}
         style={styles.container}
       >
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Portal Academico</Text>
-          <Text style={styles.title}>Entrar</Text>
+          <Text style={styles.title}>Login</Text>
+
           <Text style={styles.subtitle}>
             Acesse suas materias e acompanhe seu progresso.
           </Text>
@@ -44,6 +89,7 @@ export default function HomeScreen() {
         <View style={styles.form}>
           <View style={styles.field}>
             <Text style={styles.label}>E-mail</Text>
+
             <TextInput
               autoCapitalize="none"
               autoCorrect={false}
@@ -58,7 +104,10 @@ export default function HomeScreen() {
 
           <View style={styles.field}>
             <Text style={styles.label}>Senha</Text>
+
             <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
               onChangeText={setPassword}
               placeholder="Sua senha"
               placeholderTextColor={COLORS.gray}
@@ -70,10 +119,20 @@ export default function HomeScreen() {
 
           <Pressable
             accessibilityRole="button"
-            onPress={handleLoginPreview}
-            style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+            accessibilityLabel="Entrar"
+            disabled={loading}
+            onPress={handleLogin}
+            style={({ pressed }) => [
+              styles.button,
+              pressed && styles.buttonPressed,
+              loading && styles.buttonDisabled,
+            ]}
           >
-            <Text style={styles.buttonText}>Entrar</Text>
+            {loading ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <Text style={styles.buttonText}>Entrar</Text>
+            )}
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -86,43 +145,46 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     flex: 1,
   },
+
   container: {
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: 24,
   },
+
   header: {
     gap: 8,
     marginBottom: 32,
   },
-  eyebrow: {
-    color: COLORS.primary,
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 0,
-    textTransform: "uppercase",
-  },
+
   title: {
     color: COLORS.text,
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: "800",
+    textAlign: "center",
   },
+
   subtitle: {
     color: COLORS.textSecondary,
     fontSize: 16,
     lineHeight: 23,
+    textAlign: "center",
   },
+
   form: {
     gap: 18,
   },
+
   field: {
     gap: 8,
   },
+
   label: {
     color: COLORS.text,
     fontSize: 14,
     fontWeight: "700",
   },
+
   input: {
     backgroundColor: COLORS.white,
     borderColor: COLORS.border,
@@ -133,17 +195,24 @@ const styles = StyleSheet.create({
     minHeight: 52,
     paddingHorizontal: 14,
   },
+
   button: {
     alignItems: "center",
     backgroundColor: COLORS.primary,
     borderRadius: 8,
+    justifyContent: "center",
     marginTop: 6,
     minHeight: 54,
-    justifyContent: "center",
   },
+
   buttonPressed: {
     backgroundColor: COLORS.primaryDark,
   },
+
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+
   buttonText: {
     color: COLORS.white,
     fontSize: 16,
