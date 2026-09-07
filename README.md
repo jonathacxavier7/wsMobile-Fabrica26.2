@@ -1,56 +1,148 @@
-# Welcome to your Expo app 👋
+# wsMobile-Fabrica26.2
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicativo mobile desenvolvido com React Native, Expo e Expo Router para autenticar um usuario e exibir materias vinculadas a sua conta.
 
-## Get started
+## Funcionalidades
 
-1. Install dependencies
+- Login com e-mail e senha
+- Armazenamento seguro do token com `expo-secure-store`
+- Navegacao protegida para telas autenticadas
+- Listagem de materias com `FlatList`
+- Filtros por status: todas, ativas, pendentes e inativas
+- Pull-to-Refresh na tela de materias
+- Detalhes da materia com imagem, status, progresso, nota e descricao
+- Perfil do usuario autenticado
+- Logout com remocao do token
+- Tratamento de erro para API, credenciais invalidas e sessao expirada
 
-   ```bash
-   npm install
-   ```
+## Tecnologias
 
-2. Start the app
+- React Native
+- Expo
+- Expo Router
+- TypeScript
+- Axios
+- Expo SecureStore
+- Expo Vector Icons
 
-   ```bash
-   npx expo start
-   ```
+## Estrutura
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```text
+src/
+├── app/         # Rotas e telas principais
+├── assets/      # Arquivos estaticos usados dentro do app
+├── components/  # Componentes reutilizaveis
+└── constants/   # Cores e configuracao da API
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Requisitos
 
-### Other setup steps
+- Node.js instalado
+- pnpm instalado
+- Expo CLI via `npx expo`
+- Android Studio, emulador Android ou Expo Go
+- API backend rodando
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Instalacao
 
-## Learn more
+Clone o repositorio:
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+git clone https://github.com/jonathacxavier7/wsMobile-Fabrica26.2.git
+cd wsMobile-Fabrica26.2
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Instale as dependencias:
 
-## Join the community
+```bash
+pnpm install
+```
 
-Join our community of developers creating universal apps.
+## Configuracao da API
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+O app usa a variavel de ambiente `EXPO_PUBLIC_API_URL` para definir a URL da API.
+
+Exemplo:
+
+```bash
+EXPO_PUBLIC_API_URL=http://localhost:3000
+```
+
+No Android Emulator, caso a API esteja rodando na mesma maquina, pode ser necessario usar:
+
+```bash
+EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
+```
+
+Em celular fisico, use o IP da maquina na mesma rede Wi-Fi:
+
+```bash
+EXPO_PUBLIC_API_URL=http://SEU_IP_LOCAL:3000
+```
+
+Se a variavel nao for informada, o app usa:
+
+```text
+http://localhost:3000
+```
+
+## Endpoints Esperados
+
+```text
+POST /auth/login
+GET /subjects
+GET /subjects/:id
+GET /auth/me
+```
+
+O login deve retornar um `accessToken`:
+
+```json
+{
+  "accessToken": "token_jwt"
+}
+```
+
+## Como Rodar
+
+Inicie o projeto:
+
+```bash
+pnpm start
+```
+
+Rodar no Android:
+
+```bash
+pnpm android
+```
+
+Rodar no navegador:
+
+```bash
+pnpm web
+```
+
+## Validacao
+
+Para verificar se o TypeScript esta correto:
+
+```bash
+pnpm exec tsc --noEmit
+```
+
+## Fluxo do App
+
+1. O usuario acessa a tela de Login.
+2. Ao autenticar com sucesso, o token e salvo com seguranca.
+3. O app navega para a tela de Materias.
+4. As chamadas protegidas enviam o token no header `Authorization`.
+5. Ao abrir uma materia, o app carrega seus detalhes pela API.
+6. Na tela de Perfil, o usuario pode sair da conta.
+7. Em caso de `401`, o token e removido e o usuario volta para o Login.
+
+## Observacoes
+
+- A parte de APK/EAS Build nao e obrigatoria para esta entrega.
+- Para testar em dispositivo fisico, a API precisa estar acessivel pela rede.
+- O projeto utiliza `pnpm-lock.yaml` como lockfile principal.
