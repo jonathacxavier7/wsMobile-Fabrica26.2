@@ -1,5 +1,5 @@
+import { Feather } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { type ColorValue, Text } from "react-native";
 
 import { COLORS } from "@/constants/colors";
 
@@ -8,42 +8,48 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.gray,
+
         tabBarStyle: {
           backgroundColor: COLORS.white,
           borderTopColor: COLORS.border,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+
+          height: 72,
+          paddingTop: 6,
+          paddingBottom: 2,
+        },
+
+        tabBarItemStyle: {
+          paddingVertical: 2,
+        },
+
+        tabBarLabelStyle: {
+          fontSize: 11,
         },
       }}
     >
       <Tabs.Screen
         name="subjects"
         options={{
-          title: "Materias",
-          tabBarIcon: ({ color }) => (
-            <TextIcon color={color} label="M" />
+          title: "Matérias",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="book-open" size={size} color={color} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="profile"
         options={{
           title: "Perfil",
-          tabBarIcon: ({ color }) => (
-            <TextIcon color={color} label="P" />
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="user" size={size} color={color} />
           ),
         }}
       />
     </Tabs>
-  );
-}
-
-function TextIcon({ color, label }: { color: ColorValue; label: string }) {
-  return (
-    <Text style={{ color, fontSize: 16, fontWeight: "700" }}>{label}</Text>
   );
 }
