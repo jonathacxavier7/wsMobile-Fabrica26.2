@@ -1,49 +1,99 @@
 import { router } from "expo-router";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SubjectCard, type Subject } from "@/components/SubjectCard";
-import { COLORS } from "@/constants/colors";
+import { api } from "@/constants/api";
+import { COLORS, type SubjectStatus } from "@/constants/colors";
 
-const SUBJECTS: Subject[] = [
-  {
-    id: "matematica-aplicada",
-    title: "Matematica Aplicada",
-    shortDescription: "Funcoes, matrizes e problemas quantitativos.",
-    description:
-      "Estudo de conceitos matematicos aplicados a situacoes praticas, com foco em raciocinio logico, modelagem e resolucao de problemas.",
-    coverUrl: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=1200",
-    status: "active",
-    progress: 68,
-    grade: 8.7,
-  },
-  {
-    id: "programacao-mobile",
-    title: "Programacao Mobile",
-    shortDescription: "Interfaces nativas, navegacao e consumo de APIs.",
-    description:
-      "Disciplina voltada ao desenvolvimento de aplicativos com React Native, Expo Router, componentes reutilizaveis e integracao com servicos externos.",
-    coverUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200",
-    status: "pending",
-    progress: 34,
-    grade: 7.4,
-  },
-  {
-    id: "banco-de-dados",
-    title: "Banco de Dados",
-    shortDescription: "Modelagem, consultas SQL e persistencia de dados.",
-    description:
-      "Aborda modelagem relacional, normalizacao, consultas SQL e fundamentos de transacoes para aplicacoes modernas.",
-    coverUrl: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200",
-    status: "inactive",
-    progress: 100,
-    grade: 9.1,
-  },
+type Filter = "all" | SubjectStatus;
+
+interface CurrentUser {
+  name: string;
+  role: string;
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  student: "Aluno",
+  aluno: "Aluno",
+  teacher: "Professor",
+  professor: "Professor",
+};
+
+function getRoleLabel(role?: string) {
+  if (!role) {
+    return "Usuário";
+  }
+
+  return ROLE_LABELS[role.toLowerCase()] ?? role;
+}
+
+const FILTERS: { label: string; value: Filter }[] = [
+  { label: "Todas", value: "all" },
+  { label: "Ativas", value: "active" },
+  { label: "Pendentes", value: "pending" },
+  { label: "Inativas", value: "inactive" },
 ];
 
-const FILTERS = ["Todas", "Ativas", "Pendentes", "Inativas"];
-
 export default function SubjectsScreen() {
+  const [filter, setFilter] = useState<Filter>("all");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+
+  const filteredSubjects = useMemo(
+    () =>
+      filter === "all"
+        ? subjects
+        : subjects.filter((subject) => subject.status === filter),
+    [filter, subjects],
+  );
+
+  const loadSubjects = useCallback(async (showRefresh = false) => {
+    try {
+      if (showRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const { data } = await api.get<Subject[]>("/subjects");
+
+      setSubjects(data);
+    } catch {
+      Alert.alert("Erro", "Nao foi possivel carregar as materias.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  const loadCurrentUser = useCallback(async () => {
+    try {
+      const { data } = await api.get<CurrentUser>("/auth/me");
+
+      setCurrentUser(data);
+    } catch {
+      // Se falhar, o cabecalho continua exibindo o texto generico.
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSubjects();
+    loadCurrentUser();
+  }, [loadSubjects, loadCurrentUser]);
+
   function handleOpenSubject(id: string) {
     router.push(`/subject/${id}`);
   }
@@ -52,45 +102,82 @@ export default function SubjectsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <FlatList
         contentContainerStyle={styles.content}
-        data={SUBJECTS}
+        data={filteredSubjects}
         initialNumToRender={5}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <View style={styles.header}>
             <View style={styles.headerRow}>
-              <View>
-                <Text style={styles.greeting}>Ola, Ana</Text>
-                <Text style={styles.title}>Suas materias</Text>
+              <View style={styles.headerTexts}>
+                <Text numberOfLines={1} style={styles.title}>
+                  {currentUser
+                    ? `Bem-vindo(a) ${currentUser.name}`
+                    : "Bem-vindo(a)"}
+                </Text>
+
+                <Text style={styles.greeting}>
+                  {currentUser
+                    ? `Sua grade curricular • ${getRoleLabel(currentUser.role)}`
+                    : "Sua grade curricular"}
+                </Text>
               </View>
+
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel="Abrir perfil"
                 onPress={() => router.push("/(tabs)/profile")}
-                style={styles.profileButton}
+                style={({ pressed }) => [
+                  styles.profileButton,
+                  pressed && styles.profileButtonPressed,
+                ]}
               >
                 <Text style={styles.profileButtonText}>Perfil</Text>
               </Pressable>
             </View>
 
             <View style={styles.filters}>
-              {FILTERS.map((filter, index) => (
-                <View
-                  key={filter}
-                  style={[styles.chip, index === 0 && styles.chipActive]}
+              {FILTERS.map((item) => (
+                <Pressable
+                  accessibilityRole="button"
+                  key={item.value}
+                  onPress={() => setFilter(item.value)}
+                  style={[
+                    styles.chip,
+                    filter === item.value && styles.chipActive,
+                  ]}
                 >
                   <Text
                     style={[
                       styles.chipText,
-                      index === 0 && styles.chipTextActive,
+                      filter === item.value && styles.chipTextActive,
                     ]}
                   >
-                    {filter}
+                    {item.label}
                   </Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           </View>
         }
+        ListEmptyComponent={
+          <View style={styles.stateBox}>
+            {loading ? (
+              <ActivityIndicator color={COLORS.primary} />
+            ) : (
+              <Text style={styles.stateText}>
+                Nenhuma materia encontrada.
+              </Text>
+            )}
+          </View>
+        }
         maxToRenderPerBatch={10}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => loadSubjects(true)}
+            tintColor={COLORS.primary}
+          />
+        }
         renderItem={({ item }) => (
           <SubjectCard subject={item} onPress={handleOpenSubject} />
         )}
@@ -104,28 +191,41 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     flex: 1,
   },
+
   content: {
     padding: 20,
     paddingBottom: 28,
   },
+
   header: {
     gap: 20,
     marginBottom: 20,
   },
+
   headerRow: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  greeting: {
-    color: COLORS.textSecondary,
-    fontSize: 15,
+
+  headerTexts: {
+    flex: 1,
+    marginRight: 12,
   },
+
   title: {
     color: COLORS.text,
     fontSize: 28,
     fontWeight: "800",
   },
+
+  greeting: {
+    color: COLORS.textSecondary,
+    fontSize: 15,
+    fontWeight: "600",
+    marginTop: 4,
+  },
+
   profileButton: {
     backgroundColor: COLORS.white,
     borderColor: COLORS.border,
@@ -134,15 +234,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
+
+  profileButtonPressed: {
+    opacity: 0.75,
+  },
+
   profileButtonText: {
     color: COLORS.primary,
     fontWeight: "800",
   },
+
   filters: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
   },
+
   chip: {
     backgroundColor: COLORS.white,
     borderColor: COLORS.border,
@@ -151,16 +258,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
+
   chipActive: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
+
   chipText: {
     color: COLORS.textSecondary,
     fontSize: 13,
     fontWeight: "700",
   },
+
   chipTextActive: {
     color: COLORS.white,
+  },
+
+  stateBox: {
+    alignItems: "center",
+    paddingVertical: 32,
+  },
+
+  stateText: {
+    color: COLORS.textSecondary,
+    fontSize: 15,
   },
 });
